@@ -8,11 +8,10 @@ import (
 )
 
 type Backoff struct {
-	min               *int
-	max               *int
-	unit              time.Duration
+	min               *time.Duration
+	max               *time.Duration
 	jitter            bool
-	slotTime          float64
+	slotTime          time.Duration
 	attempts          uint
 	maxAttempts       uint
 	performedAttempts uint
@@ -22,8 +21,8 @@ var ErrMaxDurationMustBeGreater = errors.New("max duration must be greater than 
 var ErrInvalidSlotTime = errors.New("slot time cannot be negative")
 var ErrInvalidMaxAttempts = errors.New("max attempt cannot be 0")
 
-// New creates a fully parametrized Backoff
-func New(min, max uint, unit time.Duration, jitter bool, slotTime float64, maxAttempts uint) (*Backoff, error) {
+// New creates a fully parameterized Backoff
+func New(min, max, slotTime time.Duration, jitter bool, maxAttempts uint) (*Backoff, error) {
 	if max < min {
 		return nil, ErrMaxDurationMustBeGreater
 	}
@@ -36,11 +35,9 @@ func New(min, max uint, unit time.Duration, jitter bool, slotTime float64, maxAt
 		return nil, ErrInvalidMaxAttempts
 	}
 
-	nMin, nMax := int(min), int(max)
 	return &Backoff{
-		min:         &nMin,
-		max:         &nMax,
-		unit:        unit,
+		min:         &min,
+		max:         &max,
 		jitter:      jitter,
 		slotTime:    slotTime,
 		maxAttempts: maxAttempts,
@@ -48,11 +45,11 @@ func New(min, max uint, unit time.Duration, jitter bool, slotTime float64, maxAt
 }
 
 const (
-	defaultMin         int     = 0
-	defaultUnit                = time.Millisecond
-	defaultJitter              = true
-	defaultSlotTime    float64 = 100
-	defaultMaxAttempts uint    = 10
+	defaultUnit             = time.Millisecond
+	defaultMin              = 0 * defaultUnit
+	defaultJitter           = true
+	defaultSlotTime         = 100 * defaultUnit
+	defaultMaxAttempts uint = 10
 )
 
 // NewDefault creates a Backoff with default configuration
@@ -60,7 +57,6 @@ func NewDefault() Backoff {
 	dMin := defaultMin
 	return Backoff{
 		min:         &dMin,
-		unit:        defaultUnit,
 		jitter:      defaultJitter,
 		slotTime:    defaultSlotTime,
 		maxAttempts: defaultMaxAttempts,
@@ -79,27 +75,27 @@ func (b *Backoff) NextDuration() time.Duration {
 func (b *Backoff) expJitter() time.Duration {
 	nd := b.calcNextDuration()
 	if nd == 0 {
-		return time.Duration(nd)
+		return nd
 	}
 
 	rand.Seed(time.Now().UnixNano())
 
 	x := nd - *b.min
 	if x > 0 {
-		x = rand.Intn(x)
+		x = time.Duration(rand.Intn(int(x)))
 	}
 
-	return time.Duration(x + *b.min) * b.unit
+	return x + *b.min
 }
 
 func (b *Backoff) exp() time.Duration {
-	return time.Duration(b.calcNextDuration()) * b.unit
+	return b.calcNextDuration()
 }
 
-func (b *Backoff) calcNextDuration() int {
+func (b *Backoff) calcNextDuration() time.Duration {
 	b.incAttempts()
 
-	d := int((math.Pow(2, float64(b.attempts)) - 1) * b.slotTime)
+	d := time.Duration(math.Pow(2, float64(b.attempts))-1) * b.slotTime
 
 	if b.min != nil && d < *b.min {
 		return *b.min

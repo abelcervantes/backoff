@@ -89,7 +89,7 @@ func (b *Backoff) expJitter() time.Duration {
 		x = rand.Intn(x)
 	}
 
-	return (time.Duration(x + *b.min)) * b.unit
+	return time.Duration(x + *b.min) * b.unit
 }
 
 func (b *Backoff) exp() time.Duration {

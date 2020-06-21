@@ -1,4 +1,4 @@
-package main
+package backoff
 
 import (
 	"errors"
@@ -8,8 +8,8 @@ import (
 )
 
 type Backoff struct {
-	min      uint
-	max      uint
+	min      int
+	max      int
 	unit     time.Duration
 	jitter   bool
 	attempts uint
@@ -17,29 +17,34 @@ type Backoff struct {
 
 var ErrMaxDurationMustBeGreater = errors.New("max duration must be greater than min duration")
 
-// NewBackoff creates a fully parametrized Backoff
-func NewBackoff(min, max uint, unit time.Duration, jitter bool, attempts uint) (*Backoff, error) {
+// New creates a fully parametrized Backoff
+func New(min, max uint, unit time.Duration, jitter bool) (*Backoff, error) {
 	if max < min {
 		return nil, ErrMaxDurationMustBeGreater
 	}
 
 	return &Backoff{
-		min:      min,
-		max:      max,
+		min:      int(min),
+		max:      int(max),
 		unit:     unit,
 		jitter:   jitter,
-		attempts: attempts,
 	}, nil
 }
 
-// NewDefaultBackoff creates a Backoff with default configuration
-func NewDefaultBackoff() Backoff {
+const (
+	defaultMin int = 10
+	defaultMax int = 120
+	defaultUnit    = time.Second
+	defaultJitter  = true
+)
+
+// NewDefault creates a Backoff with default configuration
+func NewDefault() Backoff {
 	return Backoff{
-		min:      10,
-		max:      120,
-		unit:     time.Second,
-		jitter:   true,
-		attempts: 20,
+		min:      defaultMin,
+		max:      defaultMax,
+		unit:     defaultUnit,
+		jitter:   defaultJitter,
 	}
 }
 
@@ -52,7 +57,7 @@ func (b *Backoff) NextDuration() time.Duration {
 	return b.exp()
 }
 
-func (b Backoff) expJitter() time.Duration {
+func (b *Backoff) expJitter() time.Duration {
 	nextD := b.calcNextDuration()
 
 	rand.Seed(time.Now().UnixNano())
@@ -60,7 +65,7 @@ func (b Backoff) expJitter() time.Duration {
 	return time.Duration(rand.Intn(nextD-b.min)+b.min) * b.unit
 }
 
-func (b Backoff) exp() time.Duration {
+func (b *Backoff) exp() time.Duration {
 	return time.Duration(b.calcNextDuration()) * b.unit
 }
 
@@ -81,6 +86,6 @@ func (b *Backoff) calcNextDuration() int {
 }
 
 // Attempts returns the current number of performed attempts
-func (b *Backoff) Attempts() int {
+func (b *Backoff) Attempts() uint {
 	return b.attempts
 }

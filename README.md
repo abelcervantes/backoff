@@ -11,6 +11,10 @@ A simple truncated backoff algorithm implementation made with go!
 go get github.com/abelcervantes/backoff
 ```
 
+## Formula
+To calculate the next duration:
+((2^attempts) - 1) * slotTime 
+
 ## Usage
 default: 
 ``` go

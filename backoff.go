@@ -22,6 +22,12 @@ var ErrInvalidSlotTime = errors.New("slot time cannot be negative")
 var ErrInvalidMaxAttempts = errors.New("max attempt cannot be 0")
 
 // New creates a fully parameterized Backoff
+// min, max minimum and maximum waiting time, nextDuration will always return values between min and max
+// slotTime theoretical duration to perform the action that we are retrying, more info: https://en.wikipedia.org/wiki/Slot_time
+// jitter if true, the next duration will be a random number between minimum and next computed duration
+// about jitter: https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/
+// maxAttempts maximum number of attempts at which the next duration will stop to increase (when jitter is activated
+// the range will stop to increase)
 func New(min, max, slotTime time.Duration, jitter bool, maxAttempts uint) (*Backoff, error) {
 	if max < min {
 		return nil, ErrMaxDurationMustBeGreater
@@ -45,6 +51,7 @@ func New(min, max, slotTime time.Duration, jitter bool, maxAttempts uint) (*Back
 }
 
 const (
+	// default backoff configuration
 	defaultUnit             = time.Millisecond
 	defaultMin              = 0 * defaultUnit
 	defaultJitter           = true
